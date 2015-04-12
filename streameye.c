@@ -198,7 +198,8 @@ void print_help() {
     fprintf(stderr, "    -l                 listen only on localhost interface\n");
     fprintf(stderr, "    -p port            tcp port to listen on (defaults to %d)\n", DEF_TCP_PORT);
     fprintf(stderr, "    -q                 quiet mode, log only errors\n");
-    fprintf(stderr, "    -s separator       the separator between jpeg frames received at input (mandatory)\n");
+    fprintf(stderr, "    -s separator       a separator between jpeg frames received at input\n");
+    fprintf(stderr, "                       (will autodetect frame starts if not supplied\n");
     fprintf(stderr, "    -t timeout         client read timeout, in seconds\n");
     fprintf(stderr, "\n");
 }
@@ -272,20 +273,12 @@ int main(int argc, char *argv[]) {
         tcp_port = DEF_TCP_PORT;
     }
 
-    if (!input_separator) {
-        fprintf(stderr, "please specify an input separator using \"-s\"\n");
-        print_help();
-        return -1;
-    }
-
-    if (strlen(input_separator) < 4) {
-        fprintf(stderr, "input separator must have at least 4 characters\n");
-        print_help();
-        return -1;
-    }
-
     INFO("streamEye %s", STREAM_EYE_VERSION);
     INFO("hello!");
+
+    if (input_separator && strlen(input_separator) < 4) {
+        INFO("the input separator supplied is very likely to appear in the actual frame data (consider a longer one)");
+    }
 
     /* signals */
     DEBUG("installing signal handlers");
@@ -299,7 +292,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     if (sigaction(SIGTERM, &act, NULL) < 0) {
-        ERRNO("signal() failed");
+        ERRNO("sigaction() failed");
         return -1;
     }
     if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
@@ -342,9 +335,20 @@ int main(int argc, char *argv[]) {
     char input_buf[INPUT_BUF_LEN];
     char *sep;
     int size, rem_len, i;
-    int input_separator_len = strlen(input_separator);
+    int auto_separator = 0;
+    int input_separator_len;
+    if (!input_separator) {
+        auto_separator = 1;
+        input_separator_len = 4; /* strlen(JPEG_START) + strlen(JPEG_END) */;
+        input_separator = malloc(input_separator_len + 1);
+        snprintf(input_separator, input_separator_len + 1, "%s%s", JPEG_END, JPEG_START);
+    }
+    else {
+        input_separator_len = strlen(input_separator);
+    }
 
     while (running) {
+        usleep(10000);
         size = read(STDIN_FILENO, input_buf, INPUT_BUF_LEN);
         if (size < 0) {
             if (errno == EINTR) {
@@ -374,8 +378,14 @@ int main(int argc, char *argv[]) {
                 input_separator, input_separator_len);
 
         if (sep) {
-            rem_len = jpeg_size - (sep - jpeg_buf) - input_separator_len;
-            jpeg_size = sep - jpeg_buf;
+            if (auto_separator) {
+                rem_len = jpeg_size - (sep - jpeg_buf) - 2 /* strlen(JPEG_START) */;
+                jpeg_size = sep - jpeg_buf + 2 /* strlen(JPEG_END) */;
+            }
+            else {
+                rem_len = jpeg_size - (sep - jpeg_buf) - input_separator_len;
+                jpeg_size = sep - jpeg_buf;
+            }
 
             DEBUG("input: jpeg buffer ready with %d bytes", jpeg_size);
 
@@ -393,7 +403,7 @@ int main(int argc, char *argv[]) {
                 return -1;
             }
 
-            /* this unlocking/locking allows clients to acquire the lock
+            /* this allows clients to acquire the lock
              * for a small period of time and do their thing */
             usleep(1000);
 
@@ -403,7 +413,7 @@ int main(int argc, char *argv[]) {
             }
 
             /* copy the remainder of data back to the jpeg buffer */
-            memmove(jpeg_buf, sep + input_separator_len, rem_len);
+            memmove(jpeg_buf, sep + (auto_separator ? 2 /* strlen(JPEG_END) */ : input_separator_len), rem_len);
             jpeg_size = rem_len;
         }
 

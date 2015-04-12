@@ -31,6 +31,8 @@
 #define JPEG_BUF_LEN                    1024 * 1024 * 10 /* 10MB */
 #define DEF_CLIENT_READ_TIMEOUT         10
 #define DEF_TCP_PORT                    8080
+#define JPEG_START                      "\xFF\xD8"
+#define JPEG_END                        "\xFF\xD9"
 
 extern int              log_level;
 extern char             jpeg_buf[];
