@@ -8,13 +8,14 @@ It will feed the JPEGs read at input to all connected clients, in a MJPEG stream
 
 Usage: `<jpeg stream> | streameye [options]`
 Available options:
-    `-d`  - debug mode, increased log verbosity
-    `-h`  - print this help text
-    `-l`  - listen only on localhost interface
-    `-p port`  - tcp port to listen on (defaults to 8080)
-    `-q`  - quiet mode, log only errors
-    `-s separator`  - the separator between jpeg frames received at input (mandatory)
-    `-t timeout`  - client read timeout, in seconds
+
+* `-d`  - debug mode, increased log verbosity
+* `-h`  - print this help text
+* `-l`  - listen only on localhost interface
+* `-p port`  - tcp port to listen on (defaults to 8080)
+* `-q`  - quiet mode, log only errors
+* `-s separator`  - the separator between jpeg frames received at input (mandatory)
+* `-t timeout`  - client read timeout, in seconds
 
 ## Examples
 
