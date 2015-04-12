@@ -1,0 +1,5 @@
+*.o
+streameye
+test*
+.cproject
+.project
