@@ -199,8 +199,8 @@ void print_help() {
     fprintf(stderr, "    -p port            tcp port to listen on (defaults to %d)\n", DEF_TCP_PORT);
     fprintf(stderr, "    -q                 quiet mode, log only errors\n");
     fprintf(stderr, "    -s separator       a separator between jpeg frames received at input\n");
-    fprintf(stderr, "                       (will autodetect frame starts if not supplied\n");
-    fprintf(stderr, "    -t timeout         client read timeout, in seconds\n");
+    fprintf(stderr, "                       (will autodetect jpeg frame starts by default)\n");
+    fprintf(stderr, "    -t timeout         client read timeout, in seconds (defaults to %d)\n", DEF_CLIENT_READ_TIMEOUT);
     fprintf(stderr, "\n");
 }
 
@@ -348,7 +348,6 @@ int main(int argc, char *argv[]) {
     }
 
     while (running) {
-        usleep(10000);
         size = read(STDIN_FILENO, input_buf, INPUT_BUF_LEN);
         if (size < 0) {
             if (errno == EINTR) {

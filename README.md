@@ -14,8 +14,8 @@ Available options:
 * `-l` - listen only on localhost interface
 * `-p port` - tcp port to listen on (defaults to 8080)
 * `-q` - quiet mode, log only errors
-* `-s separator` - a separator between jpeg frames received at input
-* `-t timeout` - client read timeout, in seconds
+* `-s separator` - a separator between jpeg frames received at input (will autodetect jpeg frame starts by default)
+* `-t timeout` - client read timeout, in seconds (defaults to 10)
 
 ## Examples
 
