@@ -1,3 +1,4 @@
+#/usr/bin/python
 
 # Copyright (c) Calin Crisan
 # This file is part of streamEye.
@@ -59,7 +60,7 @@ def parse_options():
             raise argparse.ArgumentTypeError('invalid value')
     
     parser = argparse.ArgumentParser(add_help=False, usage='%(prog)s -w WIDTH -h HEIGHT -r FRAMERATE [options]',
-            description='This program continuously captures JPEGs from the CSI camera in video mode and writes them to standard output.')
+            description='This program continuously captures JPEGs from the CSI camera and writes them to standard output.')
     
     parser.add_argument('-w', '--width', help='capture width, in pixels (64 to 1920, required)',
             type=int, dest='width', required=False)
@@ -75,7 +76,7 @@ def parse_options():
     parser.add_argument('--hflip', help='flip image horizontally',
             action='store_true', dest='hflip', default=False)
     parser.add_argument('--rotation', help='rotate image',
-            type=int, dest='rotation', choices=('0', '90', '180', '270'))
+            type=int, dest='rotation', default=0, choices=(0, 90, 180, 270))
 
     parser.add_argument('--brightness', help='image brightness (0 to 100, defaults to 50)',
             type=int, dest='brightness', default=50)
@@ -93,23 +94,23 @@ def parse_options():
     parser.add_argument('--shutter', help='shutter speed, in microseconds (0 to 6000000)',
             type=int, dest='shutter', default=None)
 
-    parser.add_argument('--exposure', help='exposure mode (defaults to auto)',
-            type=str, dest='exposure', default='auto',
+    parser.add_argument('--exposure', help='exposure mode',
+            type=str, dest='exposure', default=None,
             choices=('off', 'auto', 'night', 'nightpreview', 'backlight', 'spotlight', 'sports', 'snow',
                     'beach', 'verylong', 'fixedfps', 'antishake', 'fireworks'))
-    parser.add_argument('--awb', help='set automatic white balance (defaults to auto)',
-            type=str, dest='awb', default='auto',
+    parser.add_argument('--awb', help='set automatic white balance',
+            type=str, dest='awb', default=None,
             choices=('off', 'auto', 'sunlight', 'cloudy', 'shade', 'tungsten', 'fluorescent', 'incandescent', 'flash', 'horizon'))
-    parser.add_argument('--metering', help='metering mode (defaults to average)',
-            type=str, dest='metering', default='average',
+    parser.add_argument('--metering', help='metering mode',
+            type=str, dest='metering', default=None,
             choices=('average', 'spot', 'backlit', 'matrix'))
-    parser.add_argument('--drc', help='dynamic range compression (defaults to off)',
-            type=str, dest='drc', default='off',
+    parser.add_argument('--drc', help='dynamic range compression',
+            type=str, dest='drc', default=None,
             choices=('off', 'low', 'medium', 'high'))
     parser.add_argument('--vstab', help='turn on video stabilization',
             action='store_true', dest='vstab', default=False)
 
-    parser.add_argument('--imxfx', help='image effect (defaults to none)',
+    parser.add_argument('--imxfx', help='image effect',
             type=str, dest='imxfx', default='none',
             choices=('none', 'negative', 'solarize', 'sketch', 'denoise', 'emboss', 'oilpaint', 'hatch', 'gpen', 'pastel',
                     'watercolor', 'film', 'blur', 'saturation', 'colorswap', 'washedout', 'posterise', 'colorpoint',
@@ -117,9 +118,12 @@ def parse_options():
     parser.add_argument('--colfx', help='color effect (U:V format, 0 to 255, e.g. 128:128)',
             type=colfx_arg, dest='colfx', default=None)
 
+    parser.add_argument('-s', '--stills', help='use stills mode instead of video mode (considerably slower)',
+            action='store_true', dest='stills', default=False)
     parser.add_argument('-v', '--verbose', help='increase verbosity',
             action='store_true', dest='verbose', default=False)
-    parser.add_argument('--help', action='help', default=argparse.SUPPRESS, help='show this help message and exit')
+    parser.add_argument('--help', help='show this help message and exit',
+            action='help', default=argparse.SUPPRESS)
 
     parser._optionals.title = 'Available options'
     options = parser.parse_args()
@@ -186,8 +190,8 @@ def init_camera():
     camera = picamera.PiCamera(resolution=(options.width, options.height))
     
     camera.vflip = options.vflip
-    camera.hflip = options.hvlip
-    camera.rotation = camera.rotation
+    camera.hflip = options.hflip
+    camera.rotation = options.rotation
 
     camera.brightness = options.brightness
     camera.contrast = options.contrast
@@ -201,14 +205,20 @@ def init_camera():
     if options.shutter is not None:
         camera.shutter = options.shutter
 
-    camera.exposure_mode = options.exposure
-    camera.awb_mode = options.awb
-    camera.meter_mode = options.metering
-    camera.drc_strength = options.drc
+    if options.exposure is not None:
+        camera.exposure_mode = options.exposure
+    if options.awb is not None:
+        camera.awb_mode = options.awb
+    if options.metering is not None:
+        camera.meter_mode = options.metering
+    if options.drc is not None:
+        camera.drc_strength = options.drc
     camera.video_stabilization = options.vstab
     
-    camera.image_effect = option.imxfx
-    camera.color_effects = options.colfx
+    if options.imxfx is not None:
+        camera.image_effect = options.imxfx
+    if options.colfx is not None:
+        camera.color_effects = options.colfx
     
     logging.debug('camera initialized')
 
@@ -216,7 +226,7 @@ def init_camera():
 def run():
     logging.debug('starting capture')
     camera.capture_sequence(streams_iter(), format='jpeg',
-            use_video_port=True, thumbnail=None, quality=options.quality)
+            use_video_port=not options.stills, thumbnail=None, quality=options.quality)
 
 
 if __name__ == '__main__':
@@ -224,9 +234,10 @@ if __name__ == '__main__':
     parse_options()
 
     logging.basicConfig(filename=None, level=logging.DEBUG if options.verbose else logging.INFO,
-            format='%(asctime)s: %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+            format='%(asctime)s: %(levelname)5s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     logging.info('hello!')
     init_camera()
     run()
     logging.info('bye!')
+

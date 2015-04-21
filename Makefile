@@ -1,7 +1,12 @@
 
-CFLAGS = -Wall -O2 -D_GNU_SOURCE
-#CFLAGS = -Wall -g -D_GNU_SOURCE
+ifdef DEBUG
+	CFLAGS = -Wall -g -D_GNU_SOURCE
+else
+    CFLAGS = -Wall -O2 -D_GNU_SOURCE
+endif
+
 LDFLAGS = -lpthread
+PREFIX = /usr/local
 
 all: streameye
 
@@ -14,7 +19,9 @@ client.o: client.c client.h streameye.h common.h
 streameye: streameye.o client.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o streameye streameye.o client.o
 
+install: streameye
+	cp streameye $(PREFIX)/bin
+
 clean:
 	rm -f *.o
 	rm -f streameye
-
