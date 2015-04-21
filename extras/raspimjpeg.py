@@ -1,4 +1,4 @@
-#/usr/bin/python
+#!/usr/bin/python
 
 # Copyright (c) Calin Crisan
 # This file is part of streamEye.
@@ -25,6 +25,8 @@ import signal
 import sys
 import time
 
+
+VERSION = '0.1'
 
 last_time = 0
 options = None
@@ -59,7 +61,8 @@ def parse_options():
         except:
             raise argparse.ArgumentTypeError('invalid value')
     
-    parser = argparse.ArgumentParser(add_help=False, usage='%(prog)s -w WIDTH -h HEIGHT -r FRAMERATE [options]',
+    parser = argparse.ArgumentParser(add_help=False,
+            usage='%(prog)s -w WIDTH -h HEIGHT -r FRAMERATE [options]',
             description='This program continuously captures JPEGs from the CSI camera and writes them to standard output.')
     
     parser.add_argument('-w', '--width', help='capture width, in pixels (64 to 1920, required)',
@@ -120,12 +123,16 @@ def parse_options():
 
     parser.add_argument('-s', '--stills', help='use stills mode instead of video mode (considerably slower)',
             action='store_true', dest='stills', default=False)
-    parser.add_argument('-v', '--verbose', help='increase verbosity',
-            action='store_true', dest='verbose', default=False)
+    parser.add_argument('-d', '--debug', help='debug mode, increase verbosity',
+            action='store_true', dest='debug', default=False)
     parser.add_argument('--help', help='show this help message and exit',
             action='help', default=argparse.SUPPRESS)
-
+    parser.add_argument('-v', '--version',
+            action='version', default=argparse.SUPPRESS)
+    
     parser._optionals.title = 'Available options'
+    parser.version = '%(prog)s ' + VERSION
+
     options = parser.parse_args()
     
     def validate_option(name, min=None, max=None, required=False):
@@ -233,9 +240,10 @@ if __name__ == '__main__':
     configure_signals()
     parse_options()
 
-    logging.basicConfig(filename=None, level=logging.DEBUG if options.verbose else logging.INFO,
+    logging.basicConfig(filename=None, level=logging.DEBUG if options.debug else logging.INFO,
             format='%(asctime)s: %(levelname)5s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
+    logging.info('raspimjpeg.py %s' % VERSION)
     logging.info('hello!')
     init_camera()
     run()

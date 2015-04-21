@@ -3,7 +3,7 @@
 *streamEye* is a simple MJPEG streamer for Linux. It acts as an HTTP server and is capable of serving multiple simultaneous clients.
 
 It will feed the JPEGs read at input to all connected clients, in a MJPEG stream. The JPEG frames at input may be delimited by a given separator.
-Otherwise streamEye will autodetect JPEG frames.
+In the absence of a separator, *streamEye* will autodetect all JPEG frames.
 
 ## Installation
 
