@@ -3,3 +3,4 @@ streameye
 test*
 .cproject
 .project
+.pydevproject
