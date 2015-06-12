@@ -31,7 +31,15 @@
 
 #define MIN(a, b)                       ((a) < (b) ? (a) : (b))
 
-char                  * str_timestamp();
+extern int                              log_level;
+extern char                             jpeg_buf[];
+extern int                              jpeg_size;
+extern int                              running;
+extern pthread_cond_t                   jpeg_cond;
+extern pthread_mutex_t                  jpeg_mutex;
+
+
+char *                                  str_timestamp();
 
 
 #endif /* __COMMON_H */

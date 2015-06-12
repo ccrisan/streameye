@@ -17,23 +17,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __CLIENT_H
-#define __CLIENT_H
+#ifndef __AUTH_H
+#define __AUTH_H
 
-typedef struct {
-    int             stream_fd;
-    char            addr[INET_ADDRSTRLEN];
-    int             port;
-    char            method[10];
-    char            http_ver[10];
-    char            uri[1024];
-    char *          auth_basic_hash;
-    int             running;
-    pthread_t       thread;
-    int             jpeg_ready;
-} client_t;
-
-void                handle_client(client_t *client);
+#define AUTH_OFF    0
+#define AUTH_BASIC  1
 
 
-#endif /* __CLIENT_H */
+void                set_auth(int mode, char *username, char *password, char *realm);
+int                 get_auth_mode();
+char *              get_auth_realm();
+char *              get_auth_basic_hash();
+
+#endif /* __AUTH_H */

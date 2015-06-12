@@ -33,9 +33,16 @@
 
 #include "streameye.h"
 #include "common.h"
+#include "auth.h"
 
 
-const char *RESPONSE_HEADER_TEMPLATE =
+const char *RESPONSE_BASIC_AUTH_HEADER_TEMPLATE =
+        "HTTP/1.0 401 Not Authorized\r\n"
+        "Server: streamEye/%s\r\n"
+        "Connection: close\r\n"
+        "WWW-Authenticate: Basic realm=\"%s\"\r\n";
+
+const char *RESPONSE_OK_HEADER_TEMPLATE =
         "HTTP/1.0 200 OK\r\n"
         "Server: streamEye/%s\r\n"
         "Connection: close\r\n"
@@ -53,9 +60,9 @@ const char *MULTIPART_HEADER =
 
 static int          read_request(client_t *client);
 static int          write_to_client(client_t *client, char *buf, int size);
-static int          write_response_header(client_t *client);
+static int          write_response_ok_header(client_t *client);
+static int          write_response_auth_basic_header(client_t *client);
 static int          write_multipart_header(client_t *client, int jpeg_size);
-static void         cleanup_client(client_t *client);
 
 
     /* client handling */
@@ -63,6 +70,9 @@ static void         cleanup_client(client_t *client);
 int read_request(client_t *client) {
     char buf[REQ_BUF_LEN];
     char *line_end, *header_mid;
+    char *header_name, *header_value;
+    char *auth_mode, *auth_basic_hash;
+    char *strtok_ptr;
     int size, found, offs = 0;
 
     memset(buf, 0, REQ_BUF_LEN);
@@ -118,7 +128,35 @@ int read_request(client_t *client) {
         else { /* subsequent line, request header */
             header_mid = strstr(buf + offs, ": ");
             if (header_mid && header_mid < line_end) {
-                DEBUG_CLIENT(client, "header: %.*s", (int) (line_end - buf - offs), buf + offs);
+                header_name = strndup(buf + offs, header_mid - buf - offs);
+                header_mid += 1; /* skip ":" */
+                while (header_mid < line_end && *header_mid == ' ') {
+                    header_mid++; /* skip header value leading spaces */
+                }
+                header_value = strndup(header_mid, line_end - header_mid);
+
+                if (!strcmp(header_name, "Authorization")) {
+                    auth_mode = strtok_r(header_value, " ", &strtok_ptr);
+                    if (!strcmp(auth_mode, "Basic")) {
+                        DEBUG_CLIENT(client, "authorization header: Basic");
+                        auth_basic_hash = strtok_r(NULL, " ", &strtok_ptr);
+                        if (auth_basic_hash) {
+                            client->auth_basic_hash = strdup(auth_basic_hash);
+                        }
+                        else {
+                            ERROR_CLIENT(client, "missing authorization hash");
+                        }
+                    }
+                    else {
+                        ERROR_CLIENT(client, "unknown authorization header: %s", auth_mode);
+                    }
+                }
+                else {
+                    DEBUG_CLIENT(client, "header: %s: %s", header_name, header_value);
+                }
+
+                free(header_name);
+                free(header_value);
             }
         }
 
@@ -150,9 +188,17 @@ int write_to_client(client_t *client, char *buf, int size) {
     return written;
 }
 
-int write_response_header(client_t *client) {
-    char *data = malloc(strlen(RESPONSE_HEADER_TEMPLATE) + 16);
-    sprintf(data, RESPONSE_HEADER_TEMPLATE, STREAM_EYE_VERSION);
+int write_response_ok_header(client_t *client) {
+    char *data = malloc(strlen(RESPONSE_OK_HEADER_TEMPLATE) + 16);
+    sprintf(data, RESPONSE_OK_HEADER_TEMPLATE, STREAM_EYE_VERSION);
+
+    return write_to_client(client, data, strlen(data));
+}
+
+int write_response_auth_basic_header(client_t *client) {
+    char *realm = get_auth_realm();
+    char *data = malloc(strlen(RESPONSE_BASIC_AUTH_HEADER_TEMPLATE) + 16 + strlen(realm));
+    sprintf(data, RESPONSE_BASIC_AUTH_HEADER_TEMPLATE, STREAM_EYE_VERSION, realm);
 
     return write_to_client(client, data, strlen(data));
 }
@@ -174,19 +220,39 @@ int write_multipart_header(client_t *client, int jpeg_size) {
     return write_to_client(client, size_str, strlen(size_str));
 }
 
-void *handle_client(client_t *client) {
+void handle_client(client_t *client) {
     DEBUG_CLIENT(client, "reading client request");
     int result = read_request(client);
     if (result < 0) {
         ERROR_CLIENT(client, "failed to read client request");
-        return NULL;
+        goto exit;
+    }
+
+    if (get_auth_mode() == AUTH_BASIC) {
+        if (!client->auth_basic_hash || strcmp(client->auth_basic_hash, get_auth_basic_hash())) {
+            if (client->auth_basic_hash) {
+                ERROR_CLIENT(client, "authentication error");
+            }
+            else {
+                DEBUG_CLIENT(client, "authentication required");
+            }
+            result = write_response_auth_basic_header(client);
+            if (result < 0) {
+                ERROR_CLIENT(client, "failed to write response header");
+            }
+
+            goto exit;
+        }
+        else {
+            DEBUG_CLIENT(client, "authentication successful");
+        }
     }
 
     DEBUG_CLIENT(client, "writing response header");
-    result = write_response_header(client);
+    result = write_response_ok_header(client);
     if (result < 0) {
         ERROR_CLIENT(client, "failed to write response header");
-        return NULL;
+        goto exit;
     }
 
     client->running = 1;
@@ -194,7 +260,7 @@ void *handle_client(client_t *client) {
         if (pthread_mutex_lock(&jpeg_mutex)) {
             ERROR_CLIENT(client, "pthread_mutex_lock() failed");
             client->running = 0;
-            return NULL;
+            goto exit;
         }
 
         while (!client->jpeg_ready) {
@@ -242,15 +308,6 @@ void *handle_client(client_t *client) {
         }
     }
 
-    DEBUG_CLIENT(client, "cleaning up");
-    cleanup_client(client);
-
-    on_client_exit(client);
-
-    return NULL;
-}
-
-void cleanup_client(client_t *client) {
-    close(client->stream_fd);
-    free(client);
+    exit:
+        cleanup_client(client);
 }

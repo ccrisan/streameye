@@ -33,6 +33,7 @@
 
 #include "common.h"
 #include "streameye.h"
+#include "auth.h"
 
 
     /* locals */
@@ -59,7 +60,7 @@ pthread_mutex_t clients_mutex;
     /* local functions */
 
 static int          init_server();
-static client_t   * wait_for_client(int socket_fd);
+static client_t *   wait_for_client(int socket_fd);
 static void         print_help();
 
 
@@ -148,7 +149,9 @@ client_t *wait_for_client(int socket_fd) {
     return client;
 }
 
-void on_client_exit(client_t *client) {
+void cleanup_client(client_t *client) {
+    DEBUG_CLIENT(client, "cleaning up");
+
     if (pthread_mutex_lock(&clients_mutex)) {
         ERROR("pthread_mutex_lock() failed");
     }
@@ -165,8 +168,13 @@ void on_client_exit(client_t *client) {
         }
     }
 
-    clients = realloc(clients, sizeof(client_t *) * (--num_clients));
+    close(client->stream_fd);
+    if (client->auth_basic_hash) {
+        free(client->auth_basic_hash);
+    }
+    free(client);
 
+    clients = realloc(clients, sizeof(client_t *) * (--num_clients));
     DEBUG("current clients: %d", num_clients);
 
     if (pthread_mutex_unlock(&clients_mutex)) {
@@ -193,6 +201,8 @@ void print_help() {
     fprintf(stderr, "streamEye %s\n\n", STREAM_EYE_VERSION);
     fprintf(stderr, "Usage: <jpeg stream> | streameye [options]\n");
     fprintf(stderr, "Available options:\n");
+    fprintf(stderr, "    -a off|basic       HTTP authentication mode (defaults to off)\n");
+    fprintf(stderr, "    -c user:pass:realm credentials for HTTP authentication\n");
     fprintf(stderr, "    -d                 debug mode, increased log verbosity\n");
     fprintf(stderr, "    -h                 print this help text\n");
     fprintf(stderr, "    -l                 listen only on localhost interface\n");
@@ -219,10 +229,39 @@ int main(int argc, char *argv[]) {
     /* read command line arguments */
     int c;
     char *err = NULL;
+    char *t;
+
+    int auth_mode = AUTH_OFF;
+    char *auth_username = NULL;
+    char *auth_password = NULL;
+    char *auth_realm = NULL;
+    char *strtok_ptr = NULL;
 
     opterr = 0;
-    while ((c = getopt(argc, argv, "dhlp:qs:t:")) != -1) {
+    while ((c = getopt(argc, argv, "a:c:dhlp:qs:t:")) != -1) {
         switch (c) {
+            case 'a': /* authentication */
+                if (!strcmp(optarg, "basic")) {
+                    auth_mode = AUTH_BASIC;
+                }
+                break;
+
+            case 'c': /* credentials */
+                t = strtok_r(optarg, ":", &strtok_ptr);
+                if (t) {
+                    auth_username = strdup(t);
+                }
+                t = strtok_r(NULL, ":", &strtok_ptr);
+                if (t) {
+                    auth_password = strdup(t);
+                }
+                t = strtok_r(NULL, ":", &strtok_ptr);
+                if (t) {
+                    auth_realm = strdup(t);
+                }
+
+                break;
+
             case 'd': /* debug */
                 log_level = 2;
                 break;
@@ -267,6 +306,15 @@ int main(int argc, char *argv[]) {
                 print_help();
                 return -1;
         }
+    }
+
+    if (auth_mode) {
+        if (!auth_username || !auth_password || !auth_realm) {
+            ERROR("credentials are required when using authentication");
+            return -1;
+        }
+
+        set_auth(auth_mode, auth_username, auth_password, auth_realm);
     }
 
     if (!tcp_port) {

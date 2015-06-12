@@ -16,8 +16,11 @@ streameye.o: streameye.c streameye.h client.h common.h
 client.o: client.c client.h streameye.h common.h
 	$(CC) $(CFLAGS) -c -o client.o client.c
 
-streameye: streameye.o client.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o streameye streameye.o client.o
+auth.o: auth.c auth.h  common.h
+	$(CC) $(CFLAGS) -c -o auth.o auth.c
+
+streameye: streameye.o client.o auth.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o streameye streameye.o client.o auth.o
 
 install: streameye
 	cp streameye $(PREFIX)/bin

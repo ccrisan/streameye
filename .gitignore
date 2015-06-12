@@ -4,3 +4,4 @@ test*
 .cproject
 .project
 .pydevproject
+*.mjpg
