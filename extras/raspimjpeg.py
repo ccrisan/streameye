@@ -26,7 +26,7 @@ import sys
 import time
 
 
-VERSION = '0.1'
+VERSION = '0.2'
 
 last_time = 0
 options = None
@@ -71,8 +71,8 @@ def parse_options():
             type=int, dest='height', required=False)
     parser.add_argument('-r', '--framerate', help='number of frames per second (1 to 30, required)',
             type=int, dest='framerate', required=False)
-    parser.add_argument('-q', '--quality', help='jpeg quality factor (0 to 100, defaults to 85)',
-            type=int, dest='quality', default=85)
+    parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
+            type=int, dest='quality', default=50)
 
     parser.add_argument('--vflip', help='flip image vertically',
             action='store_true', dest='vflip', default=False)
@@ -162,7 +162,7 @@ def parse_options():
     validate_or_exit('width', min=64, max=1920, required=True)
     validate_or_exit('height', min=64, max=1080, required=True)
     validate_or_exit('framerate', min=1, max=30, required=True)
-    validate_or_exit('quality', min=0, max=100)
+    validate_or_exit('quality', min=1, max=100)
     validate_or_exit('brightness', min=0, max=100)
     validate_or_exit('contrast', min=-100, max=100)
     validate_or_exit('saturation', min=-100, max=100)
