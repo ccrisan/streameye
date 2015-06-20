@@ -229,13 +229,12 @@ int main(int argc, char *argv[]) {
     /* read command line arguments */
     int c;
     char *err = NULL;
-    char *t;
+    char *p, *q;
 
     int auth_mode = AUTH_OFF;
     char *auth_username = NULL;
     char *auth_password = NULL;
     char *auth_realm = NULL;
-    char *strtok_ptr = NULL;
 
     opterr = 0;
     while ((c = getopt(argc, argv, "a:c:dhlp:qs:t:")) != -1) {
@@ -247,18 +246,31 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 'c': /* credentials */
-                t = strtok_r(optarg, ":", &strtok_ptr);
-                if (t) {
-                    auth_username = strdup(t);
+                p = q = optarg;
+                while (*q && *q != ':') {
+                    q++;
                 }
-                t = strtok_r(NULL, ":", &strtok_ptr);
-                if (t) {
-                    auth_password = strdup(t);
+                auth_username = strndup(p, q - p);
+
+                if (!*q) {
+                    ERROR("invalid credentials");
+                    return -1;
                 }
-                t = strtok_r(NULL, ":", &strtok_ptr);
-                if (t) {
-                    auth_realm = strdup(t);
+                p = q = q + 1;
+                while (*q && *q != ':') {
+                    q++;
                 }
+                auth_password = strndup(p, q - p);
+
+                if (!*q) {
+                    ERROR("invalid credentials");
+                    return -1;
+                }
+                p = q = q + 1;
+                while (*q && *q != ':') {
+                    q++;
+                }
+                auth_realm = strndup(p, q - p);
 
                 break;
 
