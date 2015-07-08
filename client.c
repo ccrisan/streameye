@@ -298,7 +298,7 @@ void handle_client(client_t *client) {
         client->jpeg_ready = 0;
 
         DEBUG_CLIENT(client, "writing multipart header");
-        result = write_multipart_header(client, jpeg_size);
+        result = write_multipart_header(client, client->jpeg_tmp_buf_size);
         if (result < 0) {
             ERROR_CLIENT(client, "failed to write multipart header");
             break;
