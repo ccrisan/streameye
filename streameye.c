@@ -39,6 +39,7 @@
     /* locals */
 
 static int client_timeout = DEF_CLIENT_TIMEOUT;
+static int max_clients = 0;
 static int tcp_port = 0;
 static int listen_localhost = 0;
 static char *input_separator = NULL;
@@ -210,6 +211,7 @@ void print_help() {
     fprintf(stderr, "    -d                 debug mode, increased log verbosity\n");
     fprintf(stderr, "    -h                 print this help text\n");
     fprintf(stderr, "    -l                 listen only on localhost interface\n");
+    fprintf(stderr, "    -m max_clients     the maximal number of simultaneous clients (defaults to unlimited)\n");
     fprintf(stderr, "    -p port            tcp port to listen on (defaults to %d)\n", DEF_TCP_PORT);
     fprintf(stderr, "    -q                 quiet mode, log only errors\n");
     fprintf(stderr, "    -s separator       a separator between jpeg frames received at input\n");
@@ -241,7 +243,7 @@ int main(int argc, char *argv[]) {
     char *auth_realm = NULL;
 
     opterr = 0;
-    while ((c = getopt(argc, argv, "a:c:dhlp:qs:t:")) != -1) {
+    while ((c = getopt(argc, argv, "a:c:dhlm:p:qs:t:")) != -1) {
         switch (c) {
             case 'a': /* authentication */
                 if (!strcmp(optarg, "basic")) {
@@ -288,6 +290,14 @@ int main(int argc, char *argv[]) {
 
             case 'l': /* listen on localhost */
                 listen_localhost = 1;
+                break;
+
+            case 'm': /* max clients */
+                max_clients = strtol(optarg, &err, 10);
+                if (*err != 0) {
+                    ERROR("invalid clients number \"%s\"", optarg);
+                    return -1;
+                }
                 break;
 
             case 'p': /* tcp port */
@@ -480,8 +490,13 @@ int main(int argc, char *argv[]) {
             jpeg_size = rem_len;
         }
 
-        /* look for incoming clients */
-        client_t *client = wait_for_client(socket_fd);
+        /* check for incoming clients */
+        client_t *client = NULL;
+
+        if (!max_clients || num_clients < max_clients) {
+            client = wait_for_client(socket_fd);
+        }
+
         if (client) {
             if (pthread_create(&client->thread, NULL, (void *(*) (void *)) handle_client, client)) {
                 ERROR("pthread_create() failed");
