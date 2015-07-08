@@ -22,11 +22,11 @@
 
 #include "client.h"
 
-#define STREAM_EYE_VERSION      "0.2"
+#define STREAM_EYE_VERSION      "0.3"
 
 #define BOUNDARY_SEPARATOR      "--FrameBoundary"
 
-#define DEF_CLIENT_READ_TIMEOUT 10
+#define DEF_CLIENT_TIMEOUT      10
 #define DEF_TCP_PORT            8080
 
 #define REQ_BUF_LEN             4096

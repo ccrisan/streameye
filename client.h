@@ -28,9 +28,11 @@ typedef struct {
     char            http_ver[10];
     char            uri[1024];
     char *          auth_basic_hash;
-    int             running;
     pthread_t       thread;
     int             jpeg_ready;
+    char *          jpeg_tmp_buf;
+    int             jpeg_tmp_buf_size;
+    int             jpeg_tmp_buf_max_size;
 } client_t;
 
 void                handle_client(client_t *client);

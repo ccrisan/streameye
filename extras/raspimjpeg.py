@@ -26,7 +26,7 @@ import sys
 import time
 
 
-VERSION = '0.2'
+VERSION = '0.3'
 
 last_time = 0
 options = None

@@ -38,7 +38,7 @@
 
     /* locals */
 
-static int client_read_timeout = DEF_CLIENT_READ_TIMEOUT;
+static int client_timeout = DEF_CLIENT_TIMEOUT;
 static int tcp_port = 0;
 static int listen_localhost = 0;
 static char *input_separator = NULL;
@@ -127,10 +127,11 @@ client_t *wait_for_client(int socket_fd) {
     /* set socket timeout */
     struct timeval tv;
 
-    tv.tv_sec = client_read_timeout;
+    tv.tv_sec = client_timeout;
     tv.tv_usec = 0;
 
     setsockopt(stream_fd, SOL_SOCKET, SO_RCVTIMEO, (char *) &tv, sizeof(struct timeval));
+    setsockopt(stream_fd, SOL_SOCKET, SO_SNDTIMEO, (char *) &tv, sizeof(struct timeval));
 
     /* create client structure */
     client_t *client = malloc(sizeof(client_t));
@@ -172,6 +173,9 @@ void cleanup_client(client_t *client) {
     if (client->auth_basic_hash) {
         free(client->auth_basic_hash);
     }
+    if (client->jpeg_tmp_buf) {
+        free(client->jpeg_tmp_buf);
+    }
     free(client);
 
     clients = realloc(clients, sizeof(client_t *) * (--num_clients));
@@ -210,7 +214,7 @@ void print_help() {
     fprintf(stderr, "    -q                 quiet mode, log only errors\n");
     fprintf(stderr, "    -s separator       a separator between jpeg frames received at input\n");
     fprintf(stderr, "                       (will autodetect jpeg frame starts by default)\n");
-    fprintf(stderr, "    -t timeout         client read timeout, in seconds (defaults to %d)\n", DEF_CLIENT_READ_TIMEOUT);
+    fprintf(stderr, "    -t timeout         client read/write timeout, in seconds (defaults to %d)\n", DEF_CLIENT_TIMEOUT);
     fprintf(stderr, "\n");
 }
 
@@ -303,7 +307,7 @@ int main(int argc, char *argv[]) {
                 break;
 
             case 't': /* client timeout */
-                client_read_timeout = strtol(optarg, &err, 10);
+                client_timeout = strtol(optarg, &err, 10);
                 if (*err != 0) {
                     ERROR("invalid client timeout \"%s\"", optarg);
                     return -1;
@@ -500,13 +504,14 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    
+    running = 0;
 
     DEBUG("closing server");
     close(socket_fd);
 
     DEBUG("waiting for clients to finish");
     for (i = 0; i < num_clients; i++) {
-        clients[i]->running = 0;
         clients[i]->jpeg_ready = 1;
     }
 

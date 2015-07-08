@@ -225,7 +225,9 @@ void handle_client(client_t *client) {
     int result = read_request(client);
     if (result < 0) {
         ERROR_CLIENT(client, "failed to read client request");
-        goto exit;
+        cleanup_client(client);
+        
+        return;
     }
 
     if (get_auth_mode() == AUTH_BASIC) {
@@ -241,7 +243,9 @@ void handle_client(client_t *client) {
                 ERROR_CLIENT(client, "failed to write response header");
             }
 
-            goto exit;
+            cleanup_client(client);
+            
+            return;
         }
         else {
             DEBUG_CLIENT(client, "authentication successful");
@@ -252,27 +256,42 @@ void handle_client(client_t *client) {
     result = write_response_ok_header(client);
     if (result < 0) {
         ERROR_CLIENT(client, "failed to write response header");
-        goto exit;
+        cleanup_client(client);
+        
+        return;
     }
 
-    client->running = 1;
-    while (running && client->running) {
+    while (running) {
         if (pthread_mutex_lock(&jpeg_mutex)) {
             ERROR_CLIENT(client, "pthread_mutex_lock() failed");
-            client->running = 0;
-            goto exit;
+            break;
         }
 
         while (!client->jpeg_ready) {
             if (pthread_cond_wait(&jpeg_cond, &jpeg_mutex)) {
                 ERROR_CLIENT(client, "pthread_mutex_wait() failed");
-                client->running = 0;
-                goto unlock;
+                pthread_mutex_unlock(&jpeg_mutex);
+                break;
             }
         }
 
+        /* copy the jpeg buffer into the client's temporary buffer,
+         * but first make sure there's enough space */
+        if (jpeg_size > client->jpeg_tmp_buf_max_size) {
+            DEBUG_CLIENT(client, "temporary buffer increased to %d bytes", jpeg_size);
+            client->jpeg_tmp_buf_max_size = jpeg_size;
+            client->jpeg_tmp_buf = realloc(client->jpeg_tmp_buf, client->jpeg_tmp_buf_max_size);
+        }
+
+        client->jpeg_tmp_buf_size = jpeg_size;
+        memcpy(client->jpeg_tmp_buf, jpeg_buf, client->jpeg_tmp_buf_size);
+
+        if (pthread_mutex_unlock(&jpeg_mutex)) {
+            ERROR_CLIENT(client, "pthread_mutex_unlock() failed");
+        }
+
         if (!running) {
-            goto unlock; /* main thread is quitting */
+            break; /* speeds up the shut down procedure a bit */
         }
 
         /* reset the ready state */
@@ -282,32 +301,25 @@ void handle_client(client_t *client) {
         result = write_multipart_header(client, jpeg_size);
         if (result < 0) {
             ERROR_CLIENT(client, "failed to write multipart header");
-            client->running = 0;
-            goto unlock;
+            break;
         }
         else if (result == 0) {
             INFO_CLIENT(client, "connection closed");
-            client->running = 0;
+            break;
         }
 
         DEBUG_CLIENT(client, "writing jpeg data");
-        result = write_to_client(client, jpeg_buf, jpeg_size);
+        result = write_to_client(client, client->jpeg_tmp_buf, client->jpeg_tmp_buf_size);
         if (result < 0) {
             ERROR_CLIENT(client, "failed to write jpeg data");
-            client->running = 0;
-            goto unlock;
+            break;
         }
         else if (result == 0) {
             INFO_CLIENT(client, "connection closed");
-            client->running = 0;
-        }
-
-    unlock:
-        if (pthread_mutex_unlock(&jpeg_mutex)) {
-            ERROR_CLIENT(client, "pthread_mutex_unlock() failed");
+            break;
         }
     }
-
-    exit:
-        cleanup_client(client);
+    
+    cleanup_client(client);
 }
+
