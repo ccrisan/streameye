@@ -525,34 +525,37 @@ int main(int argc, char *argv[]) {
 
                 usleep(MIN(4 * frame_int_adj, 50000));
             }
-        }
 
-        /* check for incoming clients */
-        client_t *client = NULL;
+            /* check for incoming clients;
+             * placing this code inside the if (sep) will simply
+             * reduce the number of times we check for incoming clients,
+             * with no particular relation to the frame separator we've just found */
+            client_t *client = NULL;
 
-        if (!max_clients || num_clients < max_clients) {
-            client = wait_for_client(socket_fd);
-        }
-
-        if (client) {
-            if (pthread_create(&client->thread, NULL, (void *(*) (void *)) handle_client, client)) {
-                ERROR("pthread_create() failed");
-                return -1;
+            if (!max_clients || num_clients < max_clients) {
+                client = wait_for_client(socket_fd);
             }
 
-            if (pthread_mutex_lock(&clients_mutex)) {
-                ERROR("pthread_mutex_lock() failed");
-                return -1;
-            }
+            if (client) {
+                if (pthread_create(&client->thread, NULL, (void *(*) (void *)) handle_client, client)) {
+                    ERROR("pthread_create() failed");
+                    return -1;
+                }
 
-            clients = realloc(clients, sizeof(client_t *) * (num_clients + 1));
-            clients[num_clients++] = client;
+                if (pthread_mutex_lock(&clients_mutex)) {
+                    ERROR("pthread_mutex_lock() failed");
+                    return -1;
+                }
 
-            DEBUG("current clients: %d", num_clients);
+                clients = realloc(clients, sizeof(client_t *) * (num_clients + 1));
+                clients[num_clients++] = client;
 
-            if (pthread_mutex_unlock(&clients_mutex)) {
-                ERROR("pthread_mutex_unlock() failed");
-                return -1;
+                DEBUG("current clients: %d", num_clients);
+
+                if (pthread_mutex_unlock(&clients_mutex)) {
+                    ERROR("pthread_mutex_unlock() failed");
+                    return -1;
+                }
             }
         }
     }
