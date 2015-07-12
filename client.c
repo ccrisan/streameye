@@ -293,7 +293,7 @@ void handle_client(client_t *client) {
         }
 
         double now = get_now();
-        client->frame_int = client->frame_int * 0.9 + (now - client->last_frame_time) * 0.1;
+        client->frame_int = client->frame_int * 0.7 + (now - client->last_frame_time) * 0.3;
         client->last_frame_time = now;
         DEBUG_CLIENT(client, "current fps: %.01lf", 1 / client->frame_int);
 

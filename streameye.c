@@ -412,7 +412,10 @@ int main(int argc, char *argv[]) {
     char *sep = NULL;
     int size, rem_len = 0, i;
 
-    double now, frame_int = 0, last_frame_time = get_now();
+    double now, avg_client_frame_int;
+    double frame_int_adj;
+    double frame_int = 0;
+    double last_frame_time = get_now();
 
     int auto_separator = 0;
     int input_separator_len;
@@ -494,7 +497,7 @@ int main(int argc, char *argv[]) {
             }
 
             now = get_now();
-            frame_int = frame_int * 0.9 + (now - last_frame_time) * 0.1;
+            frame_int = frame_int * 0.7 + (now - last_frame_time) * 0.3;
             last_frame_time = now;
         }
         else {
@@ -507,8 +510,21 @@ int main(int argc, char *argv[]) {
         }
 
         if (sep) {
-            usleep(MIN(0.4 * frame_int * 1000000, 50000));
             DEBUG("current fps: %.01lf", 1 / frame_int);
+
+            avg_client_frame_int = 0;
+            for (i = 0; i < num_clients; i++) {
+                avg_client_frame_int += clients[i]->frame_int;
+            }
+            avg_client_frame_int /= num_clients;
+
+            frame_int_adj = (avg_client_frame_int - frame_int) * 1000000;
+            if (frame_int_adj > 0) {
+                DEBUG("input frame int.: %.0lf us, client frame int.: %.0lf us, frame int. adjustment: %.0lf us",
+                        frame_int * 1000000, avg_client_frame_int * 1000000, frame_int_adj);
+
+                usleep(MIN(4 * frame_int_adj, 50000));
+            }
         }
 
         /* check for incoming clients */
