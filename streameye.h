@@ -30,7 +30,7 @@
 #define DEF_TCP_PORT            8080
 
 #define REQ_BUF_LEN             4096
-#define INPUT_BUF_LEN           4096
+#define INPUT_BUF_LEN           1024 * 1024 /* 1MB */
 #define JPEG_BUF_LEN            1024 * 1024 * 10 /* 10MB */
 #define JPEG_START              "\xFF\xD8"
 #define JPEG_END                "\xFF\xD9"

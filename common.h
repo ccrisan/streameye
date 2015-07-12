@@ -40,6 +40,7 @@ extern pthread_mutex_t                  jpeg_mutex;
 
 
 char *                                  str_timestamp();
+double                                  get_now();
 
 
 #endif /* __COMMON_H */

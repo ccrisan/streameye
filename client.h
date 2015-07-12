@@ -29,10 +29,14 @@ typedef struct {
     char            uri[1024];
     char *          auth_basic_hash;
     pthread_t       thread;
+
     int             jpeg_ready;
     char *          jpeg_tmp_buf;
     int             jpeg_tmp_buf_size;
     int             jpeg_tmp_buf_max_size;
+
+    double          frame_int;
+    double          last_frame_time;
 } client_t;
 
 void                handle_client(client_t *client);

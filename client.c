@@ -261,6 +261,8 @@ void handle_client(client_t *client) {
         return;
     }
 
+    client->last_frame_time = get_now();
+
     while (running) {
         if (pthread_mutex_lock(&jpeg_mutex)) {
             ERROR_CLIENT(client, "pthread_mutex_lock() failed");
@@ -290,12 +292,17 @@ void handle_client(client_t *client) {
             ERROR_CLIENT(client, "pthread_mutex_unlock() failed");
         }
 
+        double now = get_now();
+        client->frame_int = client->frame_int * 0.9 + (now - client->last_frame_time) * 0.1;
+        client->last_frame_time = now;
+        DEBUG_CLIENT(client, "current fps: %.01lf", 1 / client->frame_int);
+
+        /* clear the ready flag for this client */
+        client->jpeg_ready = 0;
+
         if (!running) {
             break; /* speeds up the shut down procedure a bit */
         }
-
-        /* reset the ready state */
-        client->jpeg_ready = 0;
 
         DEBUG_CLIENT(client, "writing multipart header");
         result = write_multipart_header(client, client->jpeg_tmp_buf_size);
@@ -308,7 +315,7 @@ void handle_client(client_t *client) {
             break;
         }
 
-        DEBUG_CLIENT(client, "writing jpeg data");
+        DEBUG_CLIENT(client, "writing jpeg data (%d bytes)", client->jpeg_tmp_buf_size);
         result = write_to_client(client, client->jpeg_tmp_buf, client->jpeg_tmp_buf_size);
         if (result < 0) {
             ERROR_CLIENT(client, "failed to write jpeg data");

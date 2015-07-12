@@ -27,6 +27,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -136,11 +137,12 @@ client_t *wait_for_client(int socket_fd) {
 
     /* create client structure */
     client_t *client = malloc(sizeof(client_t));
-    memset(client, 0, sizeof(client_t));
     if (!client) {
         ERROR("malloc() failed");
         return NULL;
     }
+
+    memset(client, 0, sizeof(client_t));
 
     client->stream_fd = stream_fd;
     inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, client->addr, INET_ADDRSTRLEN);
@@ -218,6 +220,12 @@ void print_help() {
     fprintf(stderr, "                       (will autodetect jpeg frame starts by default)\n");
     fprintf(stderr, "    -t timeout         client read/write timeout, in seconds (defaults to %d)\n", DEF_CLIENT_TIMEOUT);
     fprintf(stderr, "\n");
+}
+
+double get_now() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
 void bye_handler(int signal) {
@@ -399,16 +407,13 @@ int main(int argc, char *argv[]) {
 
     INFO("listening on %s:%d", listen_localhost ? "127.0.0.1" : "0.0.0.0", tcp_port);
 
-    /* start with the mutex locked */
-    if (pthread_mutex_lock(&jpeg_mutex)) {
-        ERROR("pthread_mutex_lock() failed");
-        return -1;
-    }
-
     /* main loop */
     char input_buf[INPUT_BUF_LEN];
-    char *sep;
-    int size, rem_len, i;
+    char *sep = NULL;
+    int size, rem_len = 0, i;
+
+    double now, frame_int = 0, last_frame_time = get_now();
+
     int auto_separator = 0;
     int input_separator_len;
     if (!input_separator) {
@@ -443,6 +448,23 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+        if (pthread_mutex_lock(&jpeg_mutex)) {
+            ERROR("pthread_mutex_lock() failed");
+            return -1;
+        }
+
+        /* clear the ready flag for all clients,
+         * as we start building the next frame */
+        for (i = 0; i < num_clients; i++) {
+            clients[i]->jpeg_ready = 0;
+        }
+
+        if (rem_len) {
+            /* copy the remainder of data from the previous iteration back to the jpeg buffer */
+            memmove(jpeg_buf, sep + (auto_separator ? 2 /* strlen(JPEG_END) */ : input_separator_len), rem_len);
+            jpeg_size = rem_len;
+        }
+
         memcpy(jpeg_buf + jpeg_size, input_buf, size);
         jpeg_size += size;
 
@@ -450,7 +472,7 @@ int main(int argc, char *argv[]) {
         sep = (char *) memmem(jpeg_buf + jpeg_size - MIN(2 * INPUT_BUF_LEN, jpeg_size), MIN(2 * INPUT_BUF_LEN, jpeg_size),
                 input_separator, input_separator_len);
 
-        if (sep) {
+        if (sep) { /* found a separator, jpeg frame is ready */
             if (auto_separator) {
                 rem_len = jpeg_size - (sep - jpeg_buf) - 2 /* strlen(JPEG_START) */;
                 jpeg_size = sep - jpeg_buf + 2 /* strlen(JPEG_END) */;
@@ -462,32 +484,31 @@ int main(int argc, char *argv[]) {
 
             DEBUG("input: jpeg buffer ready with %d bytes", jpeg_size);
 
+            /* set the ready flag and notify all client threads about it */
             for (i = 0; i < num_clients; i++) {
                 clients[i]->jpeg_ready = 1;
             }
-
             if (pthread_cond_broadcast(&jpeg_cond)) {
                 ERROR("pthread_cond_broadcast() failed");
                 return -1;
             }
 
-            if (pthread_mutex_unlock(&jpeg_mutex)) {
-                ERROR("pthread_mutex_unlock() failed");
-                return -1;
-            }
+            now = get_now();
+            frame_int = frame_int * 0.9 + (now - last_frame_time) * 0.1;
+            last_frame_time = now;
+        }
+        else {
+            rem_len = 0;
+        }
 
-            /* this allows clients to acquire the lock
-             * for a small period of time and do their thing */
-            usleep(1000);
+        if (pthread_mutex_unlock(&jpeg_mutex)) {
+            ERROR("pthread_mutex_unlock() failed");
+            return -1;
+        }
 
-            if (pthread_mutex_lock(&jpeg_mutex)) {
-                ERROR("pthread_mutex_lock() failed");
-                return -1;
-            }
-
-            /* copy the remainder of data back to the jpeg buffer */
-            memmove(jpeg_buf, sep + (auto_separator ? 2 /* strlen(JPEG_END) */ : input_separator_len), rem_len);
-            jpeg_size = rem_len;
+        if (sep) {
+            usleep(MIN(0.4 * frame_int * 1000000, 50000));
+            DEBUG("current fps: %.01lf", 1 / frame_int);
         }
 
         /* check for incoming clients */
@@ -529,14 +550,8 @@ int main(int argc, char *argv[]) {
     for (i = 0; i < num_clients; i++) {
         clients[i]->jpeg_ready = 1;
     }
-
     if (pthread_cond_broadcast(&jpeg_cond)) {
         ERROR("pthread_cond_broadcast() failed");
-        return -1;
-    }
-
-    if (pthread_mutex_unlock(&jpeg_mutex)) {
-        ERROR("pthread_mutex_unlock() failed");
         return -1;
     }
 
