@@ -26,7 +26,7 @@ import sys
 import time
 
 
-VERSION = '0.3'
+VERSION = '0.4'
 
 last_time = 0
 options = None
@@ -177,16 +177,16 @@ def streams_iter():
 
     frame_interval = 1.0 / options.framerate
 
-    stream = None
     while running:
         now = time.time()
-        if stream and now - last_time >= frame_interval:
-            logging.debug('jpeg frame ready')
-            sys.stdout.write(stream.getvalue())
+        if now - last_time >= frame_interval:
             last_time = now
+            logging.debug('jpeg frame ready')
+            yield sys.stdout
 
-        stream = io.BytesIO()
-        yield stream
+        else:
+            sys.stdout.flush()
+            time.sleep(frame_interval * 0.01)
 
 
 def init_camera():
@@ -196,6 +196,7 @@ def init_camera():
 
     camera = picamera.PiCamera(resolution=(options.width, options.height))
     
+    camera.framerate = options.framerate
     camera.vflip = options.vflip
     camera.hflip = options.hflip
     camera.rotation = options.rotation
@@ -237,7 +238,7 @@ def run():
 
 
 if __name__ == '__main__':
-    configure_signals()
+    #configure_signals() this doesn't seem to work and I don't really know why
     parse_options()
 
     logging.basicConfig(filename=None, level=logging.DEBUG if options.debug else logging.INFO,
