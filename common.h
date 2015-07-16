@@ -30,6 +30,7 @@
 #define ERRNO_CLIENT(client, msg)       ERROR_CLIENT(client, "%s: %s", msg, strerror(errno))
 
 #define MIN(a, b)                       ((a) < (b) ? (a) : (b))
+#define MAX(a, b)                       ((a) > (b) ? (a) : (b))
 
 extern int                              log_level;
 extern char                             jpeg_buf[];
