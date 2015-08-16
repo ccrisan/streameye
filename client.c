@@ -37,13 +37,13 @@
 
 
 const char *RESPONSE_BASIC_AUTH_HEADER_TEMPLATE =
-        "HTTP/1.0 401 Not Authorized\r\n"
+        "HTTP/1.1 401 Not Authorized\r\n"
         "Server: streamEye/%s\r\n"
         "Connection: close\r\n"
         "WWW-Authenticate: Basic realm=\"%s\"\r\n";
 
 const char *RESPONSE_OK_HEADER_TEMPLATE =
-        "HTTP/1.0 200 OK\r\n"
+        "HTTP/1.1 200 OK\r\n"
         "Server: streamEye/%s\r\n"
         "Connection: close\r\n"
         "Max-Age: 0\r\n"
