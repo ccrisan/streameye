@@ -22,7 +22,7 @@
 
 #include "client.h"
 
-#define STREAM_EYE_VERSION      "0.4"
+#define STREAM_EYE_VERSION      "0.5"
 
 #define BOUNDARY_SEPARATOR      "--FrameBoundary"
 
