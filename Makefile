@@ -1,6 +1,6 @@
 
 ifdef DEBUG
-	CFLAGS = -Wall -g -D_GNU_SOURCE
+    CFLAGS = -Wall -g -D_GNU_SOURCE
 else
     CFLAGS = -Wall -O2 -D_GNU_SOURCE
 endif

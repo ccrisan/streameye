@@ -72,7 +72,7 @@ char *get_auth_basic_hash() {
     char *userpass = malloc(strlen(auth_username) + strlen(auth_password) + 2);
     sprintf(userpass, "%s:%s", auth_username, auth_password);
 
-    auth_basic_hash = malloc(BASE64_LENGTH(strlen(userpass)));
+    auth_basic_hash = malloc(BASE64_LENGTH(strlen(userpass)) + 1);
     base64_encode(userpass, auth_basic_hash, strlen(userpass));
 
     return auth_basic_hash;
@@ -92,7 +92,7 @@ void base64_encode(const char *src, char *dest, int len) {
     };
 
     int i;
-    unsigned char *p = (unsigned char *) dest;
+    unsigned char * p = (unsigned char *) dest;
 
     /* transform 3x8 -> 4x6 bits */
     for (i = 0; i < len; i += 3) {
