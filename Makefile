@@ -1,11 +1,10 @@
 
 ifdef DEBUG
-    CFLAGS = -Wall -g -D_GNU_SOURCE
+    CFLAGS = -Wall -pthread -g -D_GNU_SOURCE
 else
-    CFLAGS = -Wall -O2 -D_GNU_SOURCE
+    CFLAGS = -Wall -pthread -O2 -D_GNU_SOURCE
 endif
 
-LDFLAGS = -lpthread
 PREFIX = /usr/local
 
 all: streameye
@@ -20,7 +19,7 @@ auth.o: auth.c auth.h  common.h
 	$(CC) $(CFLAGS) -c -o auth.o auth.c
 
 streameye: streameye.o client.o auth.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o streameye streameye.o client.o auth.o
+	$(CC) $(CFLAGS) -o streameye streameye.o client.o auth.o $(LDFLAGS)
 
 install: streameye
 	cp streameye $(PREFIX)/bin
