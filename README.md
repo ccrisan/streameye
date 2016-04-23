@@ -8,10 +8,12 @@ In the absence of a separator, *streamEye* will autodetect all JPEG frames.
 ## Installation
 
 *streamEye* was tested on various Linux machines, but may work just fine on other platforms.
-Assuming your machine has *gcc* and *GNU make* installed, just type the following commands to compile and install:
+Assuming your machine has *git*, *gcc* and *GNU make* installed, just type the following commands to compile and install:
 
+    git clone https://github.com/ccrisan/streameye.git
+    cd streameye
     make
-    make install
+    sudo make install
 
 ## Usage
 
