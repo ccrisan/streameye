@@ -8,7 +8,7 @@ In the absence of a separator, *streamEye* will autodetect all JPEG frames.
 ## Installation
 
 *streamEye* was tested on various Linux machines, but may work just fine on other platforms.
-Assuming your machine has *git*, *gcc* and *GNU make* installed, just type the following commands to compile and install:
+Assuming your machine has `git`, `gcc` and `make` installed, just type the following commands to compile and install:
 
     git clone https://github.com/ccrisan/streameye.git
     cd streameye
@@ -40,7 +40,7 @@ The following shell script will serve the JPEG files in the current directory, i
         done
     done | streameye -s "--separator--"
 
-The following command will stream your camera (assuming it's at `/dev/video0`), with 5 frames per second at 640x480:
+The following command will stream your camera (assuming it's at `/dev/video0`), with 30 frames per second at 640x480:
 
     ffmpeg -f video4linux2 -i /dev/video0 -r 30 -s 640x480 -f mjpeg -qscale 5 - 2>/dev/null | streameye
 
