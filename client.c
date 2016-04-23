@@ -192,15 +192,21 @@ int write_response_ok_header(client_t *client) {
     char *data = malloc(strlen(RESPONSE_OK_HEADER_TEMPLATE) + 16);
     sprintf(data, RESPONSE_OK_HEADER_TEMPLATE, STREAM_EYE_VERSION);
 
-    return write_to_client(client, data, strlen(data));
+    int r = write_to_client(client, data, strlen(data));
+    free(data);
+
+    return r;
 }
 
 int write_response_auth_basic_header(client_t *client) {
     char *realm = get_auth_realm();
     char *data = malloc(strlen(RESPONSE_BASIC_AUTH_HEADER_TEMPLATE) + 16 + strlen(realm));
     sprintf(data, RESPONSE_BASIC_AUTH_HEADER_TEMPLATE, STREAM_EYE_VERSION, realm);
-
-    return write_to_client(client, data, strlen(data));
+    
+    int r = write_to_client(client, data, strlen(data));
+    free(data);
+    
+    return r;
 }
 
 int write_multipart_header(client_t *client, int jpeg_size) {

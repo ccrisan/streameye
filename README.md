@@ -40,7 +40,7 @@ The following shell script will serve the JPEG files in the current directory, i
 
 The following command will stream your camera (assuming it's at `/dev/video0`), with 5 frames per second at 640x480:
 
-    ffmpeg -f video4linux2 -i /dev/video0 -r 5 -s 640x480 -f mjpeg -qscale 5 - 2>/dev/null | streameye
+    ffmpeg -f video4linux2 -i /dev/video0 -r 30 -s 640x480 -f mjpeg -qscale 5 - 2>/dev/null | streameye
 
 ## Extras
 
