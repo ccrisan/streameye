@@ -26,13 +26,11 @@ import sys
 import time
 
 
-VERSION = '0.5'
+VERSION = '0.6'
 
-last_time = 0
 options = None
 camera = None
 running = True
-
 
 def configure_signals():
     def bye_handler(signal, frame):
@@ -65,14 +63,20 @@ def parse_options():
             usage='%(prog)s -w WIDTH -h HEIGHT -r FRAMERATE [options]',
             description='This program continuously captures JPEGs from the CSI camera and writes them to standard output.')
     
-    parser.add_argument('-w', '--width', help='capture width, in pixels (64 to 1920, required)',
+    parser.add_argument('-w', '--width', help='camera width, in pixels (64 to 1920, required)',
             type=int, dest='width', required=False)
-    parser.add_argument('-h', '--height', help='capture height, in pixels (64 to 1080, required)',
+    parser.add_argument('-h', '--height', help='camera height, in pixels (64 to 1080, required)',
             type=int, dest='height', required=False)
+    parser.add_argument('--s_width', help='streaming width, in pixels (64 to 1920, if different from camera)',
+            type=int, dest='s_width', default=False)
+    parser.add_argument('--s_height', help='streaming height, in pixels (64 to 1080, if different from camera)',
+            type=int, dest='s_height', default=False)
     parser.add_argument('-r', '--framerate', help='number of frames per second (1 to 30, required)',
             type=int, dest='framerate', required=False)
     parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
             type=int, dest='quality', default=50)
+    parser.add_argument('-p', '--preview', help='enable camera preview to HDMI port',
+            action='store_true', dest='preview', default=False)
 
     parser.add_argument('--vflip', help='flip image vertically',
             action='store_true', dest='vflip', default=False)
@@ -135,6 +139,11 @@ def parse_options():
 
     options = parser.parse_args()
     
+    if not options.s_width:
+	options.s_width=options.width
+    if not options.s_height:
+	options.s_height=options.height
+
     def validate_option(name, min=None, max=None, required=False):
         value = getattr(options, name, None)
 
@@ -161,6 +170,8 @@ def parse_options():
 
     validate_or_exit('width', min=64, max=1920, required=True)
     validate_or_exit('height', min=64, max=1080, required=True)
+    validate_or_exit('s_width', min=64, max=1920, required=True)
+    validate_or_exit('s_height', min=64, max=1080, required=True)
     validate_or_exit('framerate', min=1, max=30, required=True)
     validate_or_exit('quality', min=1, max=100)
     validate_or_exit('brightness', min=0, max=100)
@@ -170,23 +181,6 @@ def parse_options():
     validate_or_exit('iso', min=100, max=800)
     validate_or_exit('ev', min=-25, max=25)
     validate_or_exit('shutter', min=0, max=6000000)
-
-
-def streams_iter():
-    global last_time
-
-    frame_interval = 1.0 / options.framerate
-
-    while running:
-        now = time.time()
-        if now - last_time >= frame_interval:
-            last_time = now
-            logging.debug('jpeg frame ready')
-            yield sys.stdout
-
-        else:
-            sys.stdout.flush()
-            time.sleep(frame_interval * 0.01)
 
 
 def init_camera():
@@ -228,13 +222,23 @@ def init_camera():
     if options.colfx is not None:
         camera.color_effects = options.colfx
     
+    if options.preview:
+	camera.start_preview()
+
     logging.debug('camera initialized')
+
+
+
+def streams_iter():
+
+    while running:
+	yield sys.stdout
+	sys.stdout.flush()
 
 
 def run():
     logging.debug('starting capture')
-    camera.capture_sequence(streams_iter(), format='jpeg',
-            use_video_port=not options.stills, thumbnail=None, quality=options.quality)
+    camera.capture_sequence(streams_iter(), format='jpeg', resize=(options.s_width, options.s_height), use_video_port=not options.stills, thumbnail=None, quality=options.quality)
 
 
 if __name__ == '__main__':
