@@ -26,7 +26,7 @@ import sys
 import time
 
 
-VERSION = '0.6'
+VERSION = '0.8'
 
 options = None
 camera = None
@@ -63,20 +63,21 @@ def parse_options():
             usage='%(prog)s -w WIDTH -h HEIGHT -r FRAMERATE [options]',
             description='This program continuously captures JPEGs from the CSI camera and writes them to standard output.')
     
-    parser.add_argument('-w', '--width', help='camera width, in pixels (64 to 1920, required)',
+    parser.add_argument('-w', '--width', help='capture (streaming) width, in pixels (64 to 3280, required)',
             type=int, dest='width', required=False)
-    parser.add_argument('-h', '--height', help='camera height, in pixels (64 to 1080, required)',
+    parser.add_argument('-h', '--height', help='capture (streaming) height, in pixels (64 to 2464, required)',
             type=int, dest='height', required=False)
-    parser.add_argument('--s_width', help='streaming width, in pixels (64 to 1920, if different from camera)',
-            type=int, dest='s_width', default=False)
-    parser.add_argument('--s_height', help='streaming height, in pixels (64 to 1080, if different from camera)',
-            type=int, dest='s_height', default=False)
     parser.add_argument('-r', '--framerate', help='number of frames per second (1 to 30, required)',
             type=int, dest='framerate', required=False)
     parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
             type=int, dest='quality', default=50)
+
     parser.add_argument('-p', '--preview', help='enable camera preview to HDMI port',
             action='store_true', dest='preview', default=False)
+    parser.add_argument('-x', '--preview-width', help='preview width, in pixels (64 to 3280, if different from capture width)',
+            type=int, dest='preview_width', default=False)
+    parser.add_argument('-y', '--preview-height', help='preview height, in pixels (64 to 2464, if different from capture height)',
+            type=int, dest='preview_height', default=False)
 
     parser.add_argument('--vflip', help='flip image vertically',
             action='store_true', dest='vflip', default=False)
@@ -139,10 +140,10 @@ def parse_options():
 
     options = parser.parse_args()
     
-    if not options.s_width:
-	options.s_width=options.width
-    if not options.s_height:
-	options.s_height=options.height
+    if not options.preview_width:
+        options.preview_width = options.width
+    if not options.preview_height:
+        options.preview_height = options.height
 
     def validate_option(name, min=None, max=None, required=False):
         value = getattr(options, name, None)
@@ -168,12 +169,14 @@ def parse_options():
 
             sys.exit(-1)
 
-    validate_or_exit('width', min=64, max=1920, required=True)
-    validate_or_exit('height', min=64, max=1080, required=True)
-    validate_or_exit('s_width', min=64, max=1920, required=True)
-    validate_or_exit('s_height', min=64, max=1080, required=True)
-    validate_or_exit('framerate', min=1, max=30, required=True)
+    validate_or_exit('width', min=64, max=3280, required=True)
+    validate_or_exit('height', min=64, max=2464, required=True)
+    validate_or_exit('framerate', min=1, max=90, required=True)
     validate_or_exit('quality', min=1, max=100)
+    
+    validate_or_exit('preview_width', min=64, max=3280, required=False)
+    validate_or_exit('preview_height', min=64, max=2464, required=False)
+
     validate_or_exit('brightness', min=0, max=100)
     validate_or_exit('contrast', min=-100, max=100)
     validate_or_exit('saturation', min=-100, max=100)
@@ -205,7 +208,7 @@ def init_camera():
     if options.ev is not None:
         camera.exposure_compensation = options.ev
     if options.shutter is not None:
-        camera.shutter = options.shutter
+        camera.shutter_speed = options.shutter
 
     if options.exposure is not None:
         camera.exposure_mode = options.exposure
@@ -223,22 +226,21 @@ def init_camera():
         camera.color_effects = options.colfx
     
     if options.preview:
-	camera.start_preview()
+        camera.start_preview(resolution=(options.preview_width, options.preview_height))
 
     logging.debug('camera initialized')
 
 
-
 def streams_iter():
-
     while running:
-	yield sys.stdout
-	sys.stdout.flush()
+        yield sys.stdout
+        sys.stdout.flush()
 
 
 def run():
     logging.debug('starting capture')
-    camera.capture_sequence(streams_iter(), format='jpeg', resize=(options.s_width, options.s_height), use_video_port=not options.stills, thumbnail=None, quality=options.quality)
+    camera.capture_sequence(streams_iter(), format='jpeg',
+            use_video_port=not options.stills, thumbnail=None, quality=options.quality)
 
 
 if __name__ == '__main__':
