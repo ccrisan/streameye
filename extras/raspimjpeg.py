@@ -74,9 +74,9 @@ def parse_options():
 
     parser.add_argument('-p', '--preview', help='enable camera preview to HDMI port',
             action='store_true', dest='preview', default=False)
-    parser.add_argument('-x', '--preview-width', help='preview width, in pixels (64 to 3280, if different from capture width)',
+    parser.add_argument('--preview-width', help='preview width, in pixels (64 to 3280, if different from capture width)',
             type=int, dest='preview_width', default=False)
-    parser.add_argument('-y', '--preview-height', help='preview height, in pixels (64 to 2464, if different from capture height)',
+    parser.add_argument('--preview-height', help='preview height, in pixels (64 to 2464, if different from capture height)',
             type=int, dest='preview_height', default=False)
 
     parser.add_argument('--vflip', help='flip image vertically',
@@ -85,6 +85,8 @@ def parse_options():
             action='store_true', dest='hflip', default=False)
     parser.add_argument('--rotation', help='rotate image',
             type=int, dest='rotation', default=0, choices=(0, 90, 180, 270))
+    parser.add_argument('--zoom', help='zoom to (x,y,w,h), defaults to 0.0,0.0,1.0,1.0',
+            type=str, dest='zoom')
 
     parser.add_argument('--brightness', help='image brightness (0 to 100, defaults to 50)',
             type=int, dest='brightness', default=50)
@@ -97,8 +99,8 @@ def parse_options():
 
     parser.add_argument('--iso', help='capture ISO (100 to 800)',
             type=int, dest='iso', default=None)
-    parser.add_argument('--ev', help='EV compensation (-25 to 25)',
-            type=int, dest='ev', default=None)
+    parser.add_argument('--ev', help='exposure compensation (-25 to 25, defaults to 0)',
+            type=int, dest='ev', default=0)
     parser.add_argument('--shutter', help='shutter speed, in microseconds (0 to 6000000)',
             type=int, dest='shutter', default=None)
 
@@ -117,6 +119,8 @@ def parse_options():
             choices=('off', 'low', 'medium', 'high'))
     parser.add_argument('--vstab', help='turn on video stabilization',
             action='store_true', dest='vstab', default=False)
+    parser.add_argument('--denoise', help='enable image denoising',
+            action='store_true', dest='denoise', default=False)
 
     parser.add_argument('--imxfx', help='image effect',
             type=str, dest='imxfx', default='none',
@@ -144,6 +148,23 @@ def parse_options():
         options.preview_width = options.width
     if not options.preview_height:
         options.preview_height = options.height
+    
+    def validate_zoom(zoom):
+        zoom = zoom.split(',')
+        if len(zoom) != 4:
+            return
+        
+        try:
+            zoom = [float(z) for z in zoom]
+        
+        except:
+            return
+        
+        for z in zoom:
+            if z < 0 or z > 1:
+                return
+        
+        return zoom
 
     def validate_option(name, min=None, max=None, required=False):
         value = getattr(options, name, None)
@@ -169,6 +190,14 @@ def parse_options():
 
             sys.exit(-1)
 
+    if options.zoom:
+        options.zoom = validate_zoom(options.zoom)
+        if not options.zoom:
+            parser.print_usage(sys.stderr)
+            sys.stderr.write('%(prog)s: error: invalid zoom option\n' % {'prog': parser.prog})
+
+            sys.exit(-1)
+
     validate_or_exit('width', min=64, max=3280, required=True)
     validate_or_exit('height', min=64, max=2464, required=True)
     validate_or_exit('framerate', min=1, max=90, required=True)
@@ -191,41 +220,81 @@ def init_camera():
 
     logging.debug('initializing camera')
 
+    logging.debug('using resolution %dx%d' % (options.width, options.height))
     camera = picamera.PiCamera(resolution=(options.width, options.height))
     
+    logging.debug('using framerate = %d' % options.framerate)
     camera.framerate = options.framerate
+    
+    logging.debug('using vflip = %s' % str(options.vflip).lower())
     camera.vflip = options.vflip
+    
+    logging.debug('using hflip = %s' % str(options.hflip).lower())
     camera.hflip = options.hflip
+    
+    logging.debug('using rotation = %d' % options.rotation)
     camera.rotation = options.rotation
 
+    if options.zoom:
+        logging.debug('using zoom = (%.2f, %.2f, %.2f, %.2f)' % tuple(options.zoom))
+        camera.zoom = options.zoom
+
+    logging.debug('using brightness = %d' % options.brightness)
     camera.brightness = options.brightness
+    
+    logging.debug('using contrast = %d' % options.contrast)
     camera.contrast = options.contrast
+    
+    logging.debug('using saturation = %d' % options.saturation)
     camera.saturation = options.saturation
+    
+    logging.debug('using sharpness = %d' % options.sharpness)
     camera.sharpness = options.sharpness
     
     if options.iso is not None:
+        logging.debug('using iso = %d' % options.iso)
         camera.iso = options.iso
-    if options.ev is not None:
-        camera.exposure_compensation = options.ev
+
     if options.shutter is not None:
+        logging.debug('using shutter speed = %d' % options.shutter)
         camera.shutter_speed = options.shutter
 
+    logging.debug('using exposure compensation = %d' % options.ev)
+    camera.exposure_compensation = options.ev
+
     if options.exposure is not None:
+        logging.debug('using exposure mode = %s' % options.exposure)
         camera.exposure_mode = options.exposure
+
     if options.awb is not None:
+        logging.debug('using awb mode = %s' % options.awb)
         camera.awb_mode = options.awb
+
     if options.metering is not None:
+        logging.debug('using metering mode = %s' % options.metering)
         camera.meter_mode = options.metering
+
     if options.drc is not None:
+        logging.debug('using drc strength = %s' % options.drc)
         camera.drc_strength = options.drc
+
+    logging.debug('using video stabilization = %s' % str(options.vstab).lower())
     camera.video_stabilization = options.vstab
     
-    if options.imxfx is not None:
-        camera.image_effect = options.imxfx
-    if options.colfx is not None:
-        camera.color_effects = options.colfx
+    logging.debug('using denoise = %s' % str(options.denoise).lower())
+    camera.image_denoise = options.denoise
+    camera.video_denoise = options.denoise
     
+    if options.imxfx is not None:
+        logging.debug('using image effect = %s' % options.imxfx)
+        camera.image_effect = options.imxfx
+
+    if options.colfx is not None:
+        logging.debug('using color effect = %s' % options.colfx)
+        camera.color_effects = options.colfx
+
     if options.preview:
+        logging.debug('enabling preview %dx%d' % (options.preview_width, options.preview_height))
         camera.start_preview(resolution=(options.preview_width, options.preview_height))
 
     logging.debug('camera initialized')
