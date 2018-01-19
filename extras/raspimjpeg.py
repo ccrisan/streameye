@@ -68,7 +68,7 @@ def parse_options():
     parser.add_argument('-h', '--height', help='capture (streaming) height, in pixels (64 to 2464, required)',
             type=int, dest='height', required=False)
     parser.add_argument('-r', '--framerate', help='number of frames per second (1 to 30, required)',
-            type=int, dest='framerate', required=False)
+            type=float, dest='framerate', required=False)
     parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
             type=int, dest='quality', default=50)
 
@@ -200,7 +200,7 @@ def parse_options():
 
     validate_or_exit('width', min=64, max=3280, required=True)
     validate_or_exit('height', min=64, max=2464, required=True)
-    validate_or_exit('framerate', min=1, max=90, required=True)
+    validate_or_exit('framerate', min=0.1, max=90, required=True)
     validate_or_exit('quality', min=1, max=100)
     
     validate_or_exit('preview_width', min=64, max=3280, required=False)
