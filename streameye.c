@@ -61,15 +61,15 @@ pthread_mutex_t clients_mutex;
 
     /* local functions */
 
-static int          init_server();
+static int          init_server(char * __restrict listen_addr, size_t listen_addr_len);
 static client_t *   wait_for_client(int socket_fd);
 static void         print_help();
 
 
     /* server socket */
 
-int init_server() {
-    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+int init_server(char * __restrict listen_addr, size_t listen_addr_len) {
+    int socket_fd = socket(AF_INET6, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         ERRNO("socket() failed");
         return -1;
@@ -81,15 +81,16 @@ int init_server() {
         return -1;
     }
 
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
+    struct sockaddr_in6 server_addr;
+    server_addr.sin6_family = AF_INET6;
     if (listen_localhost) {
-        server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+        server_addr.sin6_addr = in6addr_loopback;
     }
     else {
-        server_addr.sin_addr.s_addr = INADDR_ANY;
+        server_addr.sin6_addr = in6addr_any;
     }
-    server_addr.sin_port = htons(tcp_port);
+    server_addr.sin6_port = htons(tcp_port);
+    inet_ntop(AF_INET6, &server_addr.sin6_addr, listen_addr, listen_addr_len);
 
     if (bind(socket_fd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
         ERRNO("bind() failed");
@@ -113,7 +114,7 @@ int init_server() {
 }
 
 client_t *wait_for_client(int socket_fd) {
-    struct sockaddr_in client_addr;
+    struct sockaddr_in6 client_addr;
     unsigned int client_len = sizeof(client_addr);
 
     /* wait for a connection */
@@ -145,8 +146,8 @@ client_t *wait_for_client(int socket_fd) {
     memset(client, 0, sizeof(client_t));
 
     client->stream_fd = stream_fd;
-    inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, client->addr, INET_ADDRSTRLEN);
-    client->port = ntohs(client_addr.sin_port);
+    inet_ntop(AF_INET6, &client_addr.sin6_addr, client->addr, INET6_ADDRSTRLEN);
+    client->port = ntohs(client_addr.sin6_port);
 
     INFO("new client connection from %s:%d", client->addr, client->port);
 
@@ -399,13 +400,14 @@ int main(int argc, char *argv[]) {
 
     /* tcp server */
     DEBUG("starting server");
-    int socket_fd = init_server();
+    char listen_addr[INET6_ADDRSTRLEN];
+    int socket_fd = init_server(listen_addr, sizeof(listen_addr));
     if (socket_fd < 0) {
         ERROR("failed to start server");
         return -1;
     }
 
-    INFO("listening on %s:%d", listen_localhost ? "127.0.0.1" : "0.0.0.0", tcp_port);
+    INFO("listening on [%s]:%d", listen_addr, tcp_port);
 
     /* main loop */
     char input_buf[INPUT_BUF_LEN];

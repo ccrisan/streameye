@@ -24,9 +24,9 @@
 #define INFO(fmt, ...)                  if (log_level >= 1) fprintf(stderr, "%s: INFO : " fmt "\n", str_timestamp(), ##__VA_ARGS__)
 #define ERROR(fmt, ...)                 if (log_level >= 0) fprintf(stderr, "%s: ERROR: " fmt "\n", str_timestamp(), ##__VA_ARGS__)
 #define ERRNO(msg)                      ERROR("%s: %s", msg, strerror(errno))
-#define DEBUG_CLIENT(client, fmt, ...)  DEBUG("%s:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
-#define INFO_CLIENT(client, fmt, ...)   INFO("%s:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
-#define ERROR_CLIENT(client, fmt, ...)  ERROR("%s:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
+#define DEBUG_CLIENT(client, fmt, ...)  DEBUG("[%s]:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
+#define INFO_CLIENT(client, fmt, ...)   INFO("[%s]:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
+#define ERROR_CLIENT(client, fmt, ...)  ERROR("[%s]:%d: " fmt, client->addr, client->port, ##__VA_ARGS__)
 #define ERRNO_CLIENT(client, msg)       ERROR_CLIENT(client, "%s: %s", msg, strerror(errno))
 
 #define MIN(a, b)                       ((a) < (b) ? (a) : (b))
