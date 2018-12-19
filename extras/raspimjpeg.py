@@ -299,10 +299,14 @@ def init_camera():
 
     logging.debug('camera initialized')
 
+if sys.version_info.major >= 3:
+    my_stdout = sys.stdout.buffer
+else:
+    my_stdout = sys.stdout
 
 def streams_iter():
     while running:
-        yield sys.stdout
+        yield my_stdout
         sys.stdout.flush()
 
 
