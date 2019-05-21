@@ -20,6 +20,8 @@
 #ifndef __COMMON_H
 #define __COMMON_H
 
+#include <pthread.h>
+
 #define DEBUG(fmt, ...)                 if (log_level >= 2) fprintf(stderr, "%s: DEBUG: " fmt "\n", str_timestamp(), ##__VA_ARGS__)
 #define INFO(fmt, ...)                  if (log_level >= 1) fprintf(stderr, "%s: INFO : " fmt "\n", str_timestamp(), ##__VA_ARGS__)
 #define ERROR(fmt, ...)                 if (log_level >= 0) fprintf(stderr, "%s: ERROR: " fmt "\n", str_timestamp(), ##__VA_ARGS__)
