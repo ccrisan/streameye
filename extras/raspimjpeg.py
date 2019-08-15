@@ -110,7 +110,7 @@ def parse_options():
                     'beach', 'verylong', 'fixedfps', 'antishake', 'fireworks'))
     parser.add_argument('--awb', help='set automatic white balance',
             type=str, dest='awb', default=None,
-            choices=('off', 'auto', 'sunlight', 'cloudy', 'shade', 'tungsten', 'fluorescent', 'incandescent', 'flash', 'horizon'))
+            choices=('off', 'auto', 'sunlight', 'cloudy', 'shade', 'tungsten', 'fluorescent', 'incandescent', 'flash', 'horizon', 'greyworld'))
     parser.add_argument('--metering', help='metering mode',
             type=str, dest='metering', default=None,
             choices=('average', 'spot', 'backlit', 'matrix'))
