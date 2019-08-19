@@ -25,7 +25,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
-#include <pthread.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
