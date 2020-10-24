@@ -290,7 +290,7 @@ def init_camera():
         camera.image_effect = options.imxfx
 
     if options.colfx is not None:
-        logging.debug('using color effect = %s' % options.colfx)
+        logging.debug('using color effect = %s' % (options.colfx,))
         camera.color_effects = options.colfx
 
     if options.preview:
