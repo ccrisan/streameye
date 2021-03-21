@@ -71,6 +71,8 @@ def parse_options():
             type=float, dest='framerate', required=False)
     parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
             type=int, dest='quality', default=50)
+    parser.add_argument('-3d', '--stereo', help='Stereoscopic mode (none, side-by-side, top-bottom)',
+            type=str, dest='stereo_mode', default=None)
 
     parser.add_argument('-p', '--preview', help='enable camera preview to HDMI port',
             action='store_true', dest='preview', default=False)
