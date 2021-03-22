@@ -223,7 +223,7 @@ def init_camera():
     logging.debug('initializing camera')
 
     logging.debug('using resolution %dx%d' % (options.width, options.height))
-    camera = picamera.PiCamera(resolution=(options.width, options.height))
+    camera = picamera.PiCamera(resolution=(options.width, options.height), stereo_mode=options.stereo_mode)
     
     logging.debug('using framerate = %d' % options.framerate)
     camera.framerate = options.framerate
