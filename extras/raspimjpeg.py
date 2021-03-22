@@ -71,6 +71,8 @@ def parse_options():
             type=float, dest='framerate', required=False)
     parser.add_argument('-q', '--quality', help='jpeg quality factor (1 to 100, defaults to 50)',
             type=int, dest='quality', default=50)
+    parser.add_argument('-3d', '--stereo', help='Stereoscopic mode (none, side-by-side, top-bottom)',
+            type=str, dest='stereo_mode', default=None)
 
     parser.add_argument('-p', '--preview', help='enable camera preview to HDMI port',
             action='store_true', dest='preview', default=False)
@@ -221,7 +223,7 @@ def init_camera():
     logging.debug('initializing camera')
 
     logging.debug('using resolution %dx%d' % (options.width, options.height))
-    camera = picamera.PiCamera(resolution=(options.width, options.height))
+    camera = picamera.PiCamera(resolution=(options.width, options.height), stereo_mode=options.stereo_mode)
     
     logging.debug('using framerate = %d' % options.framerate)
     camera.framerate = options.framerate
