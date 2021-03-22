@@ -22,7 +22,7 @@
 
 typedef struct {
     int             stream_fd;
-    char            addr[INET_ADDRSTRLEN];
+    char            addr[INET6_ADDRSTRLEN];
     int             port;
     char            method[10];
     char            http_ver[10];
