@@ -40,9 +40,51 @@ The following shell script will serve the JPEG files in the current directory, i
         done
     done | streameye -s "--separator--"
 
-The following command will stream your camera (assuming it's at `/dev/video0`), with 30 frames per second at 640x480:
 
-    ffmpeg -f video4linux2 -i /dev/video0 -r 30 -s 640x480 -f mjpeg -qscale 5 - 2>/dev/null | streameye
+Most (if not all) usb webcams can output mjpeg natively without having to re-encode, so using ffmpeg try:
+
+
+    ffmpeg -input_format mjpeg -video_size 640x480 -i /dev/video0 -c copy -f mjpeg - | streameye  
+
+
+Which should stream your camera (assuming it's at `/dev/video0`), at 640x480 with the cameras default framerate.
+
+
+if you would like ffmpeg to be quiet try:
+
+
+    ffmpeg -v quiet -input_format mjpeg -video_size 640x480 -i /dev/video0 -c copy -f mjpeg - | streameye  
+
+
+you can also try:
+
+
+    ffmpeg -f v4l2 -list_formats compressed -i /dev/video0
+
+
+which should return a list of output resolutions your camera supports in the mjpeg format
+
+
+    [video4linux2,v4l2 @ 0x55c6a47d66c0] Compressed:       mjpeg :         \
+    Motion-JPEG : 640x480 160x120 176x144 320x240 432x240 352x288 640x360 800x448 864x480 \
+    1024x576 800x600 960x720 1280x720 1600x896 1920x1080 
+
+
+then you could pick a different resolution, like:
+
+
+   ffmpeg -v quiet -input_format mjpeg -video_size 1920x1080 -i /dev/video0 -c copy -f mjpeg - | streameye
+
+
+Which should stream your camera (assuming it's at `/dev/video0`), at Full HD (1920x1080) 
+
+
+if none of that works, you can have ffmpeg re-encode whatever video format is coming out of the camera into mjpeg,
+albeit proboably with higher latency and lower quality and/or framerate.
+
+
+    ffmpeg -v quiet -i /dev/video0 -r 30 -s 640x480 -f mjpeg -qscale 5 - | streameye
+
 
 ## Extras
 
