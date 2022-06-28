@@ -73,7 +73,7 @@ which should return a list of output resolutions your camera supports in the mjp
 then you could pick a different resolution, like:
 
 
-   ffmpeg -v quiet -input_format mjpeg -video_size 1920x1080 -i /dev/video0 -c copy -f mjpeg - | streameye
+    ffmpeg -v quiet -input_format mjpeg -video_size 1920x1080 -i /dev/video0 -c copy -f mjpeg - | streameye
 
 
 Which should stream your camera (assuming it's at `/dev/video0`), at Full HD (1920x1080) 
