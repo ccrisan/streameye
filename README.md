@@ -97,3 +97,33 @@ This script continuously captures JPEGs from a Raspberry PI's CSI camera and wri
 Why not `raspivid` or `raspistill`? Well, at the time of writing `raspivid` doesn't output JPEGs and `raspistill` only works in *stills* mode.
 
 Why Python and not C? Because most of the stuff is done by the GPU, so the insignificant performance gain would not make it worth writing C code. And of course because [picamera](https://picamera.readthedocs.org/) is an amazing library.
+
+---
+
+### HTTP Authentication
+No IP camera should be operated without credentials. Therefore, it is important to secure the camera stream with user name and password.
+In this example, we enable HTTP authentication with these parameters:
+
+    raspimjpeg.py -w 640 -h 480 -r 15 | streameye -a basic -c username:password:workgroup
+    
+If we now call the MJPEG stream URL, we will be asked for username and password
+
+---
+
+### How to start the MJPEG stream automatically with Ubuntu/Raspbian
+First, we need to create a bash file and insert our command. Either we use ffmpeg or raspimjpeg.py as renderer. Put the command into a file. As an example we can call the file run_streameye.sh. A simple example with authentication could look like this:
+
+    #!bin/bash/
+    raspimjpeg.py -w 640 -h 480 -r 15 | streameye -a basic -c username:password:workgroup
+
+Now we have to make the file executable:
+
+    sudo chmod +x run_streameye.sh
+
+And finally we move the file to the autostart:
+
+    sudo crontab -e
+    
+Here we now enter the following code in the last line:
+
+    @reboot ./path/to/run_streameye.sh
